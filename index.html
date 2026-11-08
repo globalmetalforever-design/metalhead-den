@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metal Head Den - Personal Music Hub</title>
+    <style>
+        :root {
+            --bg-primary: #0f1115;
+            --bg-secondary: #181b22;
+            --bg-tertiary: #222632;
+            --accent: #ff3366;
+            --accent-hover: #ff5c85;
+            --text-main: #f0f2f5;
+            --text-muted: #9aa0a6;
+            --border: #2e3342;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-primary); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Left Sidebar: Playlists Database */
+        aside { width: 260px; min-width: 260px; background-color: var(--bg-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
+        .sidebar-header h1 { font-size: 1.15rem; color: var(--accent); letter-spacing: 0.5px; }
+        .sidebar-header p { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+        
+        .playlist-list { overflow-y: auto; flex: 1; padding: 12px; }
+        .playlist-item { padding: 12px 14px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; font-size: 0.9rem; }
+        .playlist-item:hover { background-color: var(--bg-tertiary); }
+        .playlist-item.active { background-color: var(--accent); color: #fff; font-weight: 600; }
+        .playlist-item .count { font-size: 0.75rem; background: rgba(0,0,0,0.25); padding: 2px 8px; border-radius: 12px; }
+
+        /* Main Section */
+        main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* Top Bar */
+        .top-bar { padding: 14px 24px; background-color: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; height: 64px; }
+        
+        /* Dropdown styling for providers */
+        .provider-select { background: var(--bg-primary); color: var(--text-main); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; width: 100%; }
+        .provider-select:hover { border-color: var(--accent); }
+
+        /* Middle & Right Body Layout */
+        .content-body { flex: 1; display: flex; overflow: hidden; height: calc(100vh - 64px); }
+        
+        /* Middle Track List */
+        .track-list-container { flex: 1; overflow-y: auto; padding: 16px 20px; border-right: 1px solid var(--border); background: var(--bg-primary); }
+        .track-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
+        .track-table th { color: var(--text-muted); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-primary); z-index: 10; }
+        .track-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        .track-row { cursor: pointer; transition: background 0.15s; }
+        .track-row:hover { background-color: var(--bg-secondary); }
+        .track-row.playing { background-color: rgba(255, 51, 102, 0.18); border-left: 4px solid var(--accent); }
+
+        /* Right Panel Structure */
+        .player-panel { width: 420px; min-width: 420px; background-color: var(--bg-secondary); display: flex; flex-direction: column; padding: 18px; overflow-y: auto; gap: 14px; height: 100%; }
+        
+        /* 1. Album Section */
+        .album-section { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; }
+        .album-art-placeholder { width: 64px; height: 64px; background: var(--bg-tertiary); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: var(--text-muted); flex-shrink: 0; overflow: hidden; }
+        .album-art-placeholder img { width: 100%; height: 100%; object-fit: cover; }
+        .album-meta h3 { font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 290px; }
+        .album-meta p { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 290px; }
+
+        /* 2. Audio Provider Section */
+        .section-label { font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; }
+
+        /* 3. Streamer Control Placeholder Card (Bottom Half) */
+        .streamer-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px; align-items: center; text-align: center; margin-top: auto; }
+        .streamer-art { width: 90px; height: 90px; background: var(--bg-tertiary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; overflow: hidden; border: 1px solid var(--border); }
+        .streamer-art img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .player-controls { display: flex; justify-content: center; gap: 14px; align-items: center; width: 100%; }
+        .ctrl-btn { background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-main); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: all 0.2s; }
+        .ctrl-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .ctrl-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; width: 50px; height: 50px; font-size: 1.2rem; }
+        .ctrl-btn.stop-btn { background: #3a1c24; border-color: #ff3366; color: #ff3366; }
+        .ctrl-btn.stop-btn:hover { background: #ff3366; color: #fff; }
+
+        .session-stats { background: var(--bg-tertiary); padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; width: 100%; }
+        .session-stats span { color: var(--text-main); font-weight: 600; }
+
+        /* Mobile Layout View */
+        .mobile-layout { display: none; flex-direction: column; width: 100vw; height: 100vh; background: var(--bg-primary); overflow-y: auto; padding: 16px; }
+        .mobile-widget-card { background: var(--bg-secondary); border: 1px solid var(--accent); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+        .mobile-widget-top { display: flex; gap: 14px; align-items: center; }
+        .mobile-widget-art { width: 60px; height: 60px; background: var(--bg-tertiary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0; overflow: hidden; }
+        .mobile-widget-art img { width: 100%; height: 100%; object-fit: cover; }
+        .mobile-widget-meta h3 { font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+        .mobile-widget-meta p { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+    </style>
+</head>
+<body>
+
+    <!-- Hidden audio element for preview streaming -->
+    <audio id="fallback-audio-player" style="display:none;"></audio>
+
+    <!-- Desktop View Wrapper -->
+    <div id="desktop-app" style="display: flex; width: 100vw; height: 100vh; overflow: hidden;">
+        <aside>
+            <div class="sidebar-header">
+                <h1>Metal Head Den</h1>
+                <p>Curated Power & Heavy Metal</p>
+            </div>
+            <div class="playlist-list" id="playlist-container"></div>
+        </aside>
+
+        <main>
+            <div class="top-bar">
+                <h2 id="current-playlist-title" style="font-size: 1.1rem;">Select Playlist</h2>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Mode: <span style="color: var(--accent);">Real Streamer PC</span></div>
+            </div>
+
+            <div class="content-body">
+                <div class="track-list-container">
+                    <table class="track-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 45px;">#</th>
+                                <th>Title</th>
+                                <th>Artist</th>
+                                <th>Album</th>
+                            </tr>
+                        </thead>
+                        <tbody id="track-table-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="player-panel">
+                    <!-- 1. Selected Album at Top Right -->
+                    <div>
+                        <div class="section-label">Selected Album</div>
+                        <div class="album-section">
+                            <div class="album-art-placeholder" id="album-art-box">💿</div>
+                            <div class="album-meta">
+                                <h3 id="current-album-title">No Album Loaded</h3>
+                                <p id="current-artist-name">Select a track</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Audio Streaming Service Selector -->
+                    <div>
+                        <div class="section-label">Audio - Streaming Service</div>
+                        <select id="provider-dropdown" class="provider-select">
+                            <option value="youtube">YouTube Music Premium</option>
+                            <option value="spotify">Spotify</option>
+                            <option value="amazon">Amazon Music</option>
+                            <option value="deezer">Deezer</option>
+                            <option value="qobuz">Qobuz</option>
+                            <option value="tidal">Tidal</option>
+                            <option value="apple">Apple Music</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. Streamer Control Placeholder Card (Bottom Half) with buttons inside -->
+                    <div class="streamer-card">
+                        <div class="streamer-art" id="streamer-art-box">🎸</div>
+                        <div>
+                            <h4 id="now-playing-title" style="font-size: 1rem; color: var(--accent); margin-bottom: 4px;">Ready</h4>
+                            <p id="now-playing-subtitle" style="font-size: 0.8rem; color: var(--text-muted);">Select a track to stream</p>
+                        </div>
+                        
+                        <div class="player-controls">
+                            <button class="ctrl-btn" id="prev-btn" title="Previous">&#9664;&#9664;</button>
+                            <button class="ctrl-btn primary" id="play-pause-btn" title="Play">&#9658;</button>
+                            <button class="ctrl-btn stop-btn" id="stop-btn" title="Stop">■</button>
+                            <button class="ctrl-btn" id="next-btn" title="Next">&#9654;&#9654;</button>
+                        </div>
+
+                        <div class="session-stats">
+                            <div>Played: <span id="stat-played-count">0</span></div>
+                            <div>Status: <span id="stat-status">Stopped</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile View Wrapper -->
+    <div id="mobile-app" class="mobile-layout">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h1 style="font-size: 1.2rem; color: var(--accent);">Metal Head Den</h1>
+            <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--bg-secondary); padding: 4px 8px; border-radius: 6px;">Mobile Streamer</span>
+        </div>
+
+        <div class="mobile-widget-card">
+            <div class="mobile-widget-top">
+                <div class="mobile-widget-art" id="mob-art-box">🎸</div>
+                <div class="mobile-widget-meta">
+                    <h3 id="mob-track-title">Ready to Play</h3>
+                    <p id="mob-artist-album">Select a track below...</p>
+                </div>
+            </div>
+            
+            <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Streaming Service:</div>
+                <select id="mob-provider-dropdown" class="provider-select">
+                    <option value="youtube">YouTube Music Premium</option>
+                    <option value="spotify">Spotify</option>
+                    <option value="amazon">Amazon Music</option>
+                    <option value="deezer">Deezer</option>
+                    <option value="qobuz">Qobuz</option>
+                    <option value="tidal">Tidal</option>
+                    <option value="apple">Apple Music</option>
+                </select>
+            </div>
+
+            <div style="display: flex; justify-content: center; gap: 14px; align-items: center;">
+                <button class="ctrl-btn" id="mob-prev-btn">&#9664;&#9664;</button>
+                <button class="ctrl-btn primary" id="mob-play-pause-btn">&#9658;</button>
+                <button class="ctrl-btn stop-btn" id="mob-stop-btn" title="Stop">■</button>
+                <button class="ctrl-btn" id="mob-next-btn">&#9654;&#9654;</button>
+            </div>
+        </div>
+
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600;">Playlists & Tracks</div>
+        <div id="mobile-playlist-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+    </div>
+
+    <!-- Embedded Library Data -->
+    <script>
+        const embeddedLibraryData = {"version": "1.0", "curator": "Balaji K S", "playlists": [{"name": "Dynamite 1", "track_count": 41, "tracks": [{"id": "trk_dynamite_1_001", "title": "END OF BEGINNING (STRANGER THINGS)", "artist": "DARIUS REIG", "album": "END OF BEGINNING (STRANGER THINGS)", "isrc": "QZES72640078", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_002", "title": "DANGER ZONE (TOP GUN soundtrack)", "artist": "DARIUS REIG", "album": "DANGER ZONE [TOP GUN soundtrack]", "isrc": "QZZ7T2663098", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_003", "title": "Stronger Than You Think", "artist": "Fearless Motivation", "album": "Stronger Than You Think", "isrc": "USCGH2510161", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_004", "title": "Danger Zone", "artist": "Max Cruise", "album": "Danger Zone", "isrc": "AUOAZ2000030", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_005", "title": "Friction", "artist": "The Midnight", "album": "Syndicate", "isrc": "USUS12500368", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_006", "title": "As Long As You Love Me (90s AOR)", "artist": "StyleShift AI", "album": "As Long As You Love Me (90s AOR)", "isrc": "QT6EW2537292", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_007", "title": "INTO THE GROOVE (Desperately Seeking Susan)", "artist": "DARIUS REIG", "album": "INTO THE GROOVE (Desperately Seeking Susan)", "isrc": "QZZ7M2650353", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_008", "title": "A Midnight Ride", "artist": "Colt Wyler", "album": "A Midnight Ride", "isrc": "QZZ7V2638270", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_009", "title": "Believe (Metal Cover)", "artist": "Metallized", "album": "Believe", "isrc": "GXJBN2629954", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_010", "title": "No Room For Cowards", "artist": "Full Metal Patriot", "album": "No Room For Cowards", "isrc": "QZMEQ2671300", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_011", "title": "Live Your Life", "artist": "FraytasticMusic", "album": "Live Your Life", "isrc": "QZWFM2666373", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_012", "title": "ONLY ONE RIDES BACK", "artist": "Dark Horizon", "album": "HELLBOUND.exe", "isrc": "QT6EW2694423", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_013", "title": "Smoke & Steel", "artist": "11:11 Rock Realm", "album": "Smoke & Steel", "isrc": "QZWFP2608150", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_014", "title": "Better Than Me", "artist": "Static in Screams", "album": "Better Than Me", "isrc": "QZZ7V2639969", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_015", "title": "Dog sentry", "artist": "Son of the Dead Sun", "album": "The Collapse", "isrc": "QZTAZ2667787", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_016", "title": "Feel the Thunder", "artist": "Sunset Drive 1985", "album": "Feel the Thunder", "isrc": "QZWFH2633178", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_017", "title": "Carols Of The Bells Metal", "artist": "Hillbilly Hellfire", "album": "Carols Of The Bells Metal", "isrc": "QT6FH2580119", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_018", "title": "Hard Men Hard Roads", "artist": "Six61 Classic Hardrock", "album": "First Strike", "isrc": "QZTBB2663299", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_019", "title": "Misery", "artist": "Eva Under Fire", "album": "Heavy On The Heart", "isrc": "TCADS1885304", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_020", "title": "Maniac", "artist": "Midnight Arena", "album": "Maniac", "isrc": "QZMEQ2693348", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_021", "title": "Take Me Away", "artist": "Tapas", "album": "Confession", "isrc": "QT6632505377", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_022", "title": "Summer Lights", "artist": "W O L F C L U B", "album": "Chasing the Storm", "isrc": "QZDA41859951", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_023", "title": "Calling out Your Name", "artist": "W.E.T.", "album": "Earthrage", "isrc": "ITG271800247", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_024", "title": "NEVER GONNA GIVE YOU UP", "artist": "DARIUS REIG", "album": "NEVER GONNA GIVE YOU UP", "isrc": "QZMEM2638696", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_025", "title": "Lemon Pound Cake", "artist": "Goober Beatz", "album": "Lemon Pound Cake", "isrc": "QZTAY2661838", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_026", "title": "The Shadow Carnival", "artist": "Underworld Vibes", "album": "Circus Of Madness", "isrc": "QT6FH2548204", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_027", "title": "When They Come for Me", "artist": "Shunned at a Funeral", "album": "Moriah", "isrc": "USHM22613607", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_028", "title": "ANGEL OF THE CITY (COBRA)", "artist": "DARIUS REIG", "album": "ANGEL OF THE CITY (COBRA)", "isrc": "QZHNA2634039", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_029", "title": "Ready To Break", "artist": "Perfect Plan", "album": "Heart Of A Lion", "isrc": "ITG272500180", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_030", "title": "Bull Dominion", "artist": "Son of the Dead Sun", "album": "Bull Dominion", "isrc": "QZHN72607119", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_031", "title": "RHYTHM IS A DANCER", "artist": "DARIUS REIG", "album": "RHYTHM IS A DANCER", "isrc": "QZK6F2610467", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_032", "title": "Jackpot! Bullets Fly", "artist": "Metalus Prime", "album": "Now The Devil Takes Control", "isrc": "QZNB82611487", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_033", "title": "Into the Sky", "artist": "FraytasticMusic", "album": "Into the Sky", "isrc": "QZZ792510252", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_034", "title": "DoubleWide", "artist": "Hillbilly Hellfire", "album": "DoubleWide", "isrc": "QZTAZ2652903", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_035", "title": "Medicine", "artist": "Through Fire", "album": "All Animal", "isrc": "USYFZ1915402", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_036", "title": "Let's Drive", "artist": "OdinMann", "album": "Let's Drive", "isrc": "GX38U2458579", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_037", "title": "ON MY OWN (ALONE)", "artist": "DARIUS REIG", "album": "ON MY OWN (ALONE)", "isrc": "QZK6P2688262", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_038", "title": "Mother, I Burned the Sky", "artist": "Iron West", "album": "Mother, I Burned the Sky", "isrc": "QZZ7V2602666", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_039", "title": "Night Pulse 105", "artist": "Wizhum", "album": "Night Pulse 105", "isrc": "QT3EX2636643", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_040", "title": "After You're Gone", "artist": "One Desire", "album": "After You're Gone", "isrc": "ITG272000511", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_dynamite_1_041", "title": "Self Control (Rock Version)", "artist": "SoftVibe Ai Studio", "album": "Self Control (Rock Version)", "isrc": "QZK6N2674198", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}]}, {"name": "Liked", "track_count": 4, "tracks": [{"id": "trk_liked_001", "title": "Halo", "artist": "Art Nation", "album": "Halo", "isrc": "ITG272500115", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_liked_002", "title": "Julia", "artist": "Art Nation", "album": "Halo", "isrc": "ITG272500117", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_liked_003", "title": "Set Me Free", "artist": "Art Nation", "album": "Halo", "isrc": "ITG272500113", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_liked_004", "title": "Thunderball", "artist": "Art Nation", "album": "Halo", "isrc": "ITG272500114", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}]}, {"name": "misc metal", "track_count": 83, "tracks": [{"id": "trk_misc_metal_001", "title": "Rise of the Dragon Empire", "artist": "Bloodbound", "album": "Rise of the Dragon Empire", "isrc": "DEU601808039", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_002", "title": "Saint of the Fallen", "artist": "Torian", "album": "God of Storms", "isrc": "DEZ901800858", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_003", "title": "Race to the Sky", "artist": "Circle of Silence", "album": "The Crimson Throne", "isrc": "DER371798102", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_004", "title": "Linkage", "artist": "Anthem", "album": "ENGRAVED", "isrc": "JPPO01703116", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_005", "title": "(We make) Sweden Rock", "artist": "Hammerfall", "album": "Dominion", "isrc": "ATN261986805", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_006", "title": "Hail to the King", "artist": "Mystic Prophecy", "album": "Metal Division", "isrc": "DEZ901901252", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_007", "title": "The Black", "artist": "Dynazty", "album": "The Dark Delight", "isrc": "DEU601908669", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_008", "title": "Live Before You Die", "artist": "Ad Infinitum", "album": "Chapter I - Monarchy", "isrc": "ATN261993607", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_009", "title": "Ghost of a Dream", "artist": "Seven Spires", "album": "Emerald Seas", "isrc": "ITG271900676", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_010", "title": "King of Fools", "artist": "Edguy", "album": "Hellfire Club", "isrc": "DED830370705", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_011", "title": "Pumping Iron Power", "artist": "Grailknights", "album": "Pumping Iron Power", "isrc": "DEOZ31700301", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_012", "title": "Songs the Night Sings", "artist": "The Dark Element", "album": "Songs the Night Sings", "isrc": "ITG271900926", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_013", "title": "The Front", "artist": "Striker", "album": "Play to Win", "isrc": "CAI371715839", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_014", "title": "Blackheart", "artist": "Rising Steel", "album": "Fight Them All", "isrc": "ITG272000418", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_015", "title": "Heat", "artist": "Steel Engraved", "album": "Steel Engraved", "isrc": "DEZ901801382", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_016", "title": "From Hell With Love", "artist": "Beast In Black", "album": "From Hell With Love", "isrc": "DED831801690", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_017", "title": "Death of the God of Light", "artist": "Brothers of Metal", "album": "Prophecy of Ragnarök", "isrc": "USCGJ1733165", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_018", "title": "Romeo Ate Juliet", "artist": "Lordi", "album": "Sexorcism", "isrc": "FIBAR1800035", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_019", "title": "Generation Headless", "artist": "Steel Engraved", "album": "Steel Engraved", "isrc": "DEZ901801375", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_020", "title": "I Am Alive", "artist": "Primal Fear", "album": "Metal Commando", "isrc": "DED832000194", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_021", "title": "Heartless Madness", "artist": "Dynazty", "album": "The Dark Delight", "isrc": "DEU601908672", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_022", "title": "Beast In Black", "artist": "Beast In Black", "album": "Berserker", "isrc": "DED831701292", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_023", "title": "The Last Frontier", "artist": "Keldian", "album": "Journey of Souls", "isrc": "USDHM2027853", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_024", "title": "Hot Stuff", "artist": "Mystic Prophecy", "album": "Monuments Uncovered", "isrc": "DER371899902", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_025", "title": "Jawbreaker", "artist": "Burning Witches", "album": "Burning Witches + Burning Alive", "isrc": "ATR981168869", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_026", "title": "Digital Dictator", "artist": "Vicious Rumors", "album": "Digital Dictator", "isrc": "QM7281532487", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_027", "title": "Immortalized", "artist": "Disturbed", "album": "Immortalized", "isrc": "USRE11500171", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_028", "title": "Spooks in the Attic", "artist": "Edguy", "album": "The Singles", "isrc": "DED830502622", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_029", "title": "Stardust and Ashes", "artist": "Labyrinth", "album": "Architecture of a God", "isrc": "ITG271700401", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_030", "title": "Symphony of the Night", "artist": "DragonForce", "album": "Maximum Overload", "isrc": "GB4421400005", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_031", "title": "The Land of the Rising Sun", "artist": "Taken", "album": "Unchained", "isrc": "QZ5FN1979216", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_032", "title": "Power", "artist": "Thaurorod", "album": "Coast of Gold", "isrc": "DES371700043", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_033", "title": "The Way to Redemption", "artist": "Majestica", "album": "Above the Sky", "isrc": "DED831801928", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_034", "title": "Eye of the Storm", "artist": "Tombstone", "album": "Shadows of Fear", "isrc": "USCGJ1920177", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_035", "title": "Tonight We Ride", "artist": "Unleash The Archers", "album": "Time Stands Still", "isrc": "ATN261559304", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_036", "title": "Turn All Into Gold", "artist": "Allen Lande", "album": "The Showdown", "isrc": "ITG271000224", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_037", "title": "Vain Glory Opera", "artist": "Edguy", "album": "Monuments", "isrc": "DED831700436", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_038", "title": "Live Like a Beast", "artist": "Wisdom", "album": "Marching for Liberty", "isrc": "ATN261303711", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_039", "title": "Metal Division", "artist": "Mystic Prophecy", "album": "Metal Division", "isrc": "DEZ901901250", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_040", "title": "Electric Crown", "artist": "Testament", "album": "The Ritual", "isrc": "USAT20003030", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_041", "title": "Helldivers Anthem", "artist": "Nicklas Sonne", "album": "Helldivers Anthem", "isrc": "ITG272500491", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_042", "title": "The Book Of Heavy Metal", "artist": "Dream Evil", "album": "Gold Medal In Metal (Alive And Archive)", "isrc": "US4E40836613", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_043", "title": "Plastic Heart", "artist": "Shiraz Lane", "album": "Plastic Heart", "isrc": "ITG272500955", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_044", "title": "All In (Till the End)", "artist": "Stargazer", "album": "Gambling With Fate", "isrc": "QZWFL2562192", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_045", "title": "The Darkness I Own", "artist": "HumanKind", "album": "The Darkness I Own", "isrc": "DE1KY2506561", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_046", "title": "Lightbringer", "artist": "Seven Spires", "album": "Lightbringer", "isrc": "ITG272100734", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_047", "title": "No Heaven Without You", "artist": "Fierlayce", "album": "No Heaven Without You", "isrc": "QZTAT2571806", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_048", "title": "The Last Fight", "artist": "Red Devil Vortex", "album": "Red Devil Vortex", "isrc": "QZBNV2300008", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_049", "title": "Make a Deal with the Devil", "artist": "Stargazer", "album": "Make a Deal with the Devil", "isrc": "DKQ4A2500901", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_050", "title": "Through The Mist", "artist": "Raining Nails", "album": "Through The Mist", "isrc": "IT8SF2500102", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_051", "title": "Atmosfear", "artist": "Hopsydian", "album": "Atmosfear", "isrc": "TCAJL2514395", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_052", "title": "Dead & Gone", "artist": "Her Chariot Awaits", "album": "Dead & Gone", "isrc": "ITG272000074", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_053", "title": "Idle Years", "artist": "Interloper", "album": "Search Party", "isrc": "DED832100064", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_054", "title": "Kill Your Gods", "artist": "Kill II This", "album": "Deviate", "isrc": "GBEGS0900090", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_055", "title": "When You Know (Where You Come From)", "artist": "Scorpions", "album": "Rock Believer (Deluxe)", "isrc": "DEUM72117536", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_056", "title": "Turbo Lover", "artist": "Judas Priest", "album": "Turbo", "isrc": "GBARL1601446", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_057", "title": "Doctor Doctor", "artist": "Iron Maiden", "album": "Best Of The B-Sides", "isrc": "GBCHB0210283", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_058", "title": "Break Down the Walls", "artist": "Bonfire", "album": "Fuel to the Flames", "isrc": "DEU601707328", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_059", "title": "Hey God (Are You In There)", "artist": "Inferisborn", "album": "Hey God (Are You In There?)", "isrc": "QZTB52511112", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_060", "title": "God Fallen Silent", "artist": "Edguy", "album": "Age of the Joker", "isrc": "DED831100400", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_061", "title": "Bulletproof", "artist": "Citizen Soldier", "album": "Bulletproof", "isrc": "TCAJM2550267", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_062", "title": "Bulletproof", "artist": "Citizen Soldier", "album": "Bulletproof", "isrc": "TCAJM2550267", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_063", "title": "American Way", "artist": "Rock-Out", "album": "American Way", "isrc": "ITG272500497", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_064", "title": "He Came, He Saw, He Conquered", "artist": "Ignescent", "album": "He Came, He Saw, He Conquered", "isrc": "ITG272500801", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_065", "title": "Breakthrough", "artist": "Joe Bonamassa", "album": "Breakthrough", "isrc": "USMH52501426", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_066", "title": "Spirit Never Die", "artist": "Masterplan", "album": "Masterplan", "isrc": "DET970200001", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_067", "title": "Black Diamond", "artist": "Stratovarius", "album": "Visions", "isrc": "DEA249700002", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_068", "title": "Square Hammer", "artist": "Ghost", "album": "Meliora (Deluxe Edition)", "isrc": "USC4R1601984", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_069", "title": "Burning Heart", "artist": "Shakra", "album": "Burning Heart", "isrc": "ITG272500802", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_070", "title": "Hold The Night", "artist": "GIANT", "album": "Hold The Night", "isrc": "ITG272500356", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_071", "title": "Dragula", "artist": "Rob Zombie", "album": "Hellbilly Deluxe", "isrc": "USGF19821203", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_072", "title": "The Temple Of The King", "artist": "Rainbow", "album": "Ritchie Blackmore's Rainbow", "isrc": "USPR37587054", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_073", "title": "Jailbreak", "artist": "Thin Lizzy", "album": "Jailbreak", "isrc": "GBF087600064", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_074", "title": "Shot in the Dark", "artist": "Within Temptation", "album": "The Unforgiving", "isrc": "NLR261000002", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_075", "title": "Learn to Live Again", "artist": "W.E.T.", "album": "Rise Up", "isrc": "ITG271300129", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_076", "title": "Beyond the Line", "artist": "Soul`s Cry", "album": "Beyond the Line", "isrc": "QT65W2512139", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_077", "title": "Break My Fall", "artist": "Dead by April", "album": "Break My Fall", "isrc": "QMFME2352782", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_078", "title": "Rain", "artist": "I Prevail", "album": "Violent Nature", "isrc": "US5262527435", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_079", "title": "Anything at All (Orchestral Version)", "artist": "Dead by April", "album": "Anything at All (Orchestral Version)", "isrc": "QMDA72143040", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_080", "title": "Dreadnought", "artist": "Coventhrall", "album": "Dreadnought (Episode II)", "isrc": "FI3FC2310203", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_081", "title": "Roar Like Thunder", "artist": "Buckcherry", "album": "Roar Like Thunder", "isrc": "QM7YK2300323", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_082", "title": "1985", "artist": "TREAT", "album": "1985", "isrc": "ITG272500843", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_misc_metal_083", "title": "Stayin' Alive", "artist": "Royal Republic", "album": "Stayin' Alive", "isrc": "DERK42500078", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}]}, {"name": "Power 57", "track_count": 36, "tracks": [{"id": "trk_power_57_001", "title": "Mistery", "artist": "Holy Knights", "album": "Between Daylight and Pain", "isrc": "USA561279813", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_002", "title": "Quiet wish", "artist": "GALNERYUS", "album": "Advance To The Fall", "isrc": "JPVP00502511", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_003", "title": "Savage", "artist": "Helloween", "album": "Keeper of the Seven Keys, Pt. 2 (Expanded Edition)", "isrc": "GBAJE0201643", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_004", "title": "Take What the Heavens Create", "artist": "Dreamtale", "album": "Seventhian... Memories of Time", "isrc": "FISDO1600020", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_005", "title": "Some Light to Find My Way", "artist": "Hangar", "album": "Infallible", "isrc": "BRQAQ0900010", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_006", "title": "When the Rain Begins to Fall", "artist": "Heavenly", "album": "Virus", "isrc": "DEZ900601661", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_007", "title": "Fields of Yesterday", "artist": "Cans", "album": "Beyond the Gates", "isrc": "GBAJE0400105", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_008", "title": "Another Angel Down", "artist": "Avantasia", "album": "The Scarecrow", "isrc": "DED830703620", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_009", "title": "Don't Stop Believin'", "artist": "Journey", "album": "Time3", "isrc": "USSM10015423", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_010", "title": "Dust to Dust", "artist": "Sinbreed", "album": "When Worlds Collide", "isrc": "USDHM1001165", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_011", "title": "Feeding the Fire", "artist": "Stratovarius", "album": "Demand", "isrc": "DEH841500429", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_012", "title": "Illusion of Life", "artist": "Dionysus", "album": "Fairytales and Reality", "isrc": "DEU600600371", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_013", "title": "Stain on the Switchblade", "artist": "Altaria", "album": "Divinity", "isrc": "ATN262002010", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_014", "title": "Willing to Be Free", "artist": "Wizards", "album": "The Kingdom", "isrc": "QZGLM2083324", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_015", "title": "Tyranny of Steel", "artist": "Iron Savior", "album": "Battering Ram", "isrc": "GBAJE0400253", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_016", "title": "My Eternal Dream", "artist": "Stratovarius", "album": "Best Of", "isrc": "DEH841600236", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_017", "title": "Demon's Child", "artist": "Iron Mask", "album": "Hordes Of The Brave", "isrc": "USCGJ0680205", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_018", "title": "Limbo", "artist": "Altair", "album": "Descending: A Devilish Comedy", "isrc": "USY252007984", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_019", "title": "Make You so Unreal", "artist": "Enbound", "album": "The Blackened Heart", "isrc": "SEXEN1600910", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_020", "title": "Holy War", "artist": "Dragonland", "album": "Holy War (Deluxe Edition)", "isrc": "DEU601405379", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_021", "title": "My Mystic Mind", "artist": "Serious Black", "album": "As Daylight Breaks", "isrc": "DEU601505429", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_022", "title": "Pathfinder - Moonlight Shadow [Mike Oldfield metal cover]", "artist": "nan", "album": "", "isrc": "", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_023", "title": "Excalibur", "artist": "Luca Turilli's Rhapsody", "album": "Ascending to Infinity", "isrc": "DED831200162", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_024", "title": "StormHaze", "artist": "Ancestral Dawn", "album": "Souldance", "isrc": "DEVG81700022", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_025", "title": "Shriek of the vengeance", "artist": "GALNERYUS", "album": "Beyond the end of despair...", "isrc": "JPVP00606602", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_026", "title": "Crucified", "artist": "Bloodbound", "album": "Nosferatu", "isrc": "DEU601103548", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_027", "title": "Blood", "artist": "Sonata Arctica", "album": "Pariah's Child", "isrc": "DED831400054", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_028", "title": "Every Word I Whisper", "artist": "Ainna", "album": "A New Religion?", "isrc": "FR6V81829921", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_029", "title": "Millennium Quest", "artist": "Hibria", "album": "Defying the Rules", "isrc": "DEKS80439004", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_030", "title": "The Last Journey", "artist": "Pellek", "album": "Ocean of Opportunity", "isrc": "USCGJ1379904", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_031", "title": "Death Is Just A Feeling", "artist": "Avantasia", "album": "Angel Of Babylon", "isrc": "DED831000138", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_032", "title": "Center of the Universe", "artist": "Kamelot", "album": "Epica", "isrc": "GBAJE0201088", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_033", "title": "Battalions of the Holy Cross", "artist": "Victorius", "album": "Dreamchaser", "isrc": "DEA451405730", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_034", "title": "Insanity", "artist": "Rage", "album": "Unity", "isrc": "DEAT71518803", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_035", "title": "Talisman", "artist": "AXXIS", "album": "Paradise in Flames", "isrc": "DEOE11300100", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_57_036", "title": "Out of the Shadows", "artist": "Stratovarius", "album": "Twilight Time", "isrc": "DEA249916005", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}]}, {"name": "Power 58", "track_count": 41, "tracks": [{"id": "trk_power_58_001", "title": "Open Your Eyes", "artist": "Michael Kiske", "album": "City of Heroes", "isrc": "ITG271500099", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_002", "title": "Hell 's Gone Crazy", "artist": "Pink Cream 69", "album": "One Size Fits All", "isrc": "DEE869100132", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_003", "title": "Hearts on Fire", "artist": "Hammerfall", "album": "Crimson Thunder", "isrc": "DED830264702", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_004", "title": "A 1000 Lifetimes", "artist": "Citadel", "album": "Transition", "isrc": "USA560458525", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_005", "title": "Never Forgotten Heroes", "artist": "Rhapsody", "album": "Symphony of Enchanted Lands II (The Dark Secret)", "isrc": "USMC70400181", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_006", "title": "Step Back", "artist": "Wizards", "album": "The Kingdom", "isrc": "QZGLM2083328", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_007", "title": "On the Shore", "artist": "Cain's Offering", "album": "Stormcrow", "isrc": "JPJ301501163", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_008", "title": "La Vita Fugge", "artist": "Vision Divine", "album": "Stream of Consciousness", "isrc": "DEAR41844268", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_009", "title": "Rebel Faction", "artist": "Primal Fear", "album": "Delivering the Black", "isrc": "ITG271400078", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_010", "title": "40:1", "artist": "Sabaton", "album": "The Art of War (Re-Armed)", "isrc": "SE2EG1000404", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_011", "title": "Raging Starfire", "artist": "Rhapsody Of Fire", "album": "The Frozen Tears of Angels", "isrc": "DED830900947", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_012", "title": "Whispers", "artist": "Orion Riders", "album": "A New Dawn", "isrc": "USCGH0579015", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_013", "title": "Dragons", "artist": "Stratovarius", "album": "Heroes", "isrc": "DEH841201017", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_014", "title": "Holding out for a Hero", "artist": "Fotis Sheriff", "album": "Lives yet to Come", "isrc": "USDY42657042", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_015", "title": "Tower of Lies", "artist": "Thornbridge", "album": "What Will Prevail", "isrc": "DER371693510", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_016", "title": "Judas", "artist": "Helloween", "album": "Walls of Jericho (Bonus Tracks Edition)", "isrc": "GBAJE0301598", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_017", "title": "The Black One", "artist": "Masterplan", "album": "Time to Be King", "isrc": "DET971000011", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_018", "title": "Bring Us the Light", "artist": "Symphonity", "album": "Voice from the Silence", "isrc": "DET270810604", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_019", "title": "The Secret of the Sea", "artist": "Signum Regis", "album": "Chapter IV: The Reckoning", "isrc": "SEXEN1501002", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_020", "title": "Ragnarök", "artist": "Stormwarrior", "album": "Heading Northe", "isrc": "DEFN50800006", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_021", "title": "Masters and Crowns", "artist": "Lancer", "album": "Masters and Crowns", "isrc": "SEXTE1500403", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_022", "title": "The Moon", "artist": "Dark Moor", "album": "Tarot", "isrc": "QMDA71803051", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_023", "title": "GLORIA", "artist": "SKYWINGS", "album": "SKY LEGACY", "isrc": "JPZ921512096", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_024", "title": "Downpour", "artist": "Balflare", "album": "Downpour", "isrc": "DEAT71519766", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_025", "title": "EVERLASTING", "artist": "GALNERYUS", "album": "ONE FOR ALL-ALL FOR ONE", "isrc": "JPVP00705005", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_026", "title": "In My Life", "artist": "GAUNTLET", "album": "Birthplace of Emperor", "isrc": "JPZ921406565", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_027", "title": "PRINCESS", "artist": "Versailles-Philharmonic Quintet-", "album": "PRINCE & PRINCESS", "isrc": "JPF890800149", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_028", "title": "To the Edge of the Earth", "artist": "Timo Tolkki’s Avalon", "album": "The Land of New Hope", "isrc": "ITG271300186", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_029", "title": "Rabbits' Hill", "artist": "Trick or Treat", "album": "Rabbits' Hill Pt.1", "isrc": "ITV781200077", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_030", "title": "The Wingman", "artist": "Excalion", "album": "Waterlines", "isrc": "DET270709801", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_031", "title": "The Curse of the Black Rose", "artist": "Silent Knight", "album": "The Masterplan", "isrc": "UST8K1734350", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_032", "title": "Angel Of Light", "artist": "Dreamtale", "album": "Epsilon", "isrc": "FISDO1100002", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_033", "title": "World of the Dead", "artist": "Tigersclaw", "album": "Princess of the Dark", "isrc": "DEKM61700384", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_034", "title": "Hail to Crail", "artist": "Gloryhammer", "album": "Tales from the Kingdom of Fife", "isrc": "ATN261346108", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_035", "title": "Lost in the Future", "artist": "Gamma Ray", "album": "Somewhere out in Space", "isrc": "DEA249700113", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_036", "title": "We Rise", "artist": "Magic Kingdom", "album": "", "isrc": "QM4TW1884148", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_037", "title": "Galaxies Unknown", "artist": "Power Quest", "album": "Magic Never Dies", "isrc": "GBKYA0703553", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_038", "title": "Zombies Dictator", "artist": "Almah", "album": "Motion", "isrc": "BREOX1100005", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_039", "title": "I Can (2024 Remaster)", "artist": "Helloween", "album": "Better Than Raw (2024 Remaster)", "isrc": "GB5KW2400993", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_040", "title": "Ghosts of the Past", "artist": "Instanzia", "album": "Ghosts", "isrc": "QZFYY2202751", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_58_041", "title": "Absolution", "artist": "Tribuzy", "album": "Execution", "isrc": "GBSMU9128165", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}]}, {"name": "Power 59", "track_count": 35, "tracks": [{"id": "trk_power_59_001", "title": "Howling at the Moon", "artist": "Vhäldemar", "album": "Against All Kings", "isrc": "QZ9JZ1729115", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_002", "title": "San Sebastian", "artist": "Sonata Arctica", "album": "Takatalvi", "isrc": "FIUM70600227", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_003", "title": "Heart of a Warrior", "artist": "Freedom Call", "album": "Beyond", "isrc": "DEA451316700", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_004", "title": "Essence of Pride", "artist": "Tierramystica", "album": "Heirs of the Sun", "isrc": "USX9P1336124", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_005", "title": "Remember Why", "artist": "Andre Matos", "album": "Time to Be Free", "isrc": "BRARP0901167", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_006", "title": "The Age of Mystic Ice", "artist": "Luca Turilli (Band)", "album": "Prophet of the Last Eclipse", "isrc": "DET270204505", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_007", "title": "The Last Resort", "artist": "Ancient Bards", "album": "A New Dawn Ending", "isrc": "DET271214506", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_008", "title": "High up in the Air", "artist": "Galderia", "album": "High up in the Air", "isrc": "DER371798504", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_009", "title": "Megantrop", "artist": "Qantice", "album": "The Cosmocinesy", "isrc": "FR6V80927350", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_010", "title": "Evil", "artist": "Heavenly", "album": "Dust to Dust", "isrc": "GBAJE0400059", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_011", "title": "Celestial Sword", "artist": "Operadyse", "album": "Pandemonium", "isrc": "FR9W11306642", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_012", "title": "Godsent", "artist": "Fairyland", "album": "Score to a New Beginning", "isrc": "ATN260927306", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_013", "title": "In nomine...", "artist": "Adagio", "album": "Sanctus Ignis", "isrc": "USHM20950828", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_014", "title": "The Great Escape", "artist": "Trick Or Treat", "album": "Rabbits' Hill Pt.2", "isrc": "ITV781600006", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_015", "title": "Under the Skies of Asia", "artist": "Taken", "album": "Taken", "isrc": "GB8HK1605937", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_016", "title": "Smoking Snakes", "artist": "Sabaton", "album": "Heroes", "isrc": "SE2EG1400103", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_017", "title": "Doctor Faust", "artist": "Iron Mask", "album": "Diabolica", "isrc": "DEU601606314", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_018", "title": "Maid of Orleans", "artist": "Dark Moor", "album": "The Hall of the Olden Dreams", "isrc": "QMDA61892437", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_019", "title": "Die for Freedom", "artist": "Labyrinth", "album": "Return to Heaven Denied", "isrc": "FR6V81859266", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_020", "title": "The Seven Angels", "artist": "Avantasia", "album": "The Metal Opera, Pt. 2", "isrc": "DEZ900500287", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_021", "title": "Rider of the Astral Fire", "artist": "Luca Turilli (Band)", "album": "Prophet of the Last Eclipse", "isrc": "DET270204503", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_022", "title": "Solid Ground", "artist": "Allen Lande", "album": "The Great Divide", "isrc": "ITG271400094", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_023", "title": "Passion", "artist": "Crystal Ball", "album": "Hard Impact", "isrc": "DEU601103480", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_024", "title": "Strength", "artist": "Shaman", "album": "Immortal", "isrc": "BRRI50700008", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_025", "title": "Message in a Bottle", "artist": "Lord", "album": "What Tomorrow Brings", "isrc": "AUDI31500003", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_026", "title": "I'm Still Alive", "artist": "Stratovarius", "album": "Elements, Pt. 1&2 (Complete Edition)", "isrc": "DEH841400431", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_027", "title": "Wasted Time", "artist": "Holy Knights", "album": "Between Daylight and Pain", "isrc": "USA561279818", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_028", "title": "The Great Force Within Us", "artist": "Metalite", "album": "Heroes in Time", "isrc": "SEXEN1700611", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_029", "title": "The Lighthouse", "artist": "Vision Divine", "album": "Destination Set To Nowhere", "isrc": "DEH841200622", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_030", "title": "You'll Know My Name", "artist": "Vandroya", "album": "Beyond the Human Mind", "isrc": "SEXEN1700207", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_031", "title": "Seventh Crusade", "artist": "Astral Doors", "album": "Jerusalem", "isrc": "DEQ121113763", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_032", "title": "My Paradise", "artist": "ReinXeed", "album": "Majestic", "isrc": "SEWFV1000108", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_033", "title": "Dragonlord", "artist": "Morifade", "album": "Possession of Power", "isrc": "SE2299900102", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_034", "title": "Dancer", "artist": "Place Vendome", "album": "Streets Of Fire", "isrc": "ITG270900083", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_59_035", "title": "The Voice of the Wind", "artist": "Drakkar", "album": "Gemini", "isrc": "USA561096460", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}]}, {"name": "Power 60", "track_count": 4, "tracks": [{"id": "trk_power_60_001", "title": "Renegade", "artist": "Titan Slayer", "album": "Avenger", "isrc": "USLZJ2030051", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_60_002", "title": "Children of the Gods", "artist": "Damned Anthem", "album": "Raising the Damned", "isrc": "US43C1500040", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_60_003", "title": "Expectations", "artist": "2WEI", "album": "Escape Velocity", "isrc": "USQY51734253", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_power_60_004", "title": "Winds of Change", "artist": "Sons Of Pythagoras", "album": "Fate of the Nation", "isrc": "GBBPP1645783", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}]}, {"name": "temp0", "track_count": 65, "tracks": [{"id": "trk_temp0_001", "title": "Bye Bye Bye", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100628", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_002", "title": "Legends Never Die", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109211", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_003", "title": "The Gates of Time", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109212", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_004", "title": "Misty Mountains", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109213", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_005", "title": "Double Trouble / Lumos! (Hedwig´s Theme)", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109214", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_006", "title": "First Light", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109215", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_007", "title": "New Horizons", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109216", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_008", "title": "The Wolven Storm (Priscilla´s Song)", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109217", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_009", "title": "May It Be", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109202", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_010", "title": "If I Had a Heart", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109218", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_011", "title": "The Hanging Tree", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109219", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_012", "title": "Jenny of Oldstones", "artist": "The Dark Side of the Moon", "album": "Metamorphosis", "isrc": "ATN262109201", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_013", "title": "Sick of You", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100629", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_014", "title": "I Need to Stay", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100630", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_015", "title": "Strong", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100631", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_016", "title": "Parasite", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100632", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_017", "title": "Sad Lullaby", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100633", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_018", "title": "Fantastic Fanatic", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100634", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_019", "title": "Who Can Save Them", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100635", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_020", "title": "Catcher of My Dreams", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100636", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_021", "title": "Hear Them Roar", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100637", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_022", "title": "Roll the Dice", "artist": "Anette Olzon", "album": "Strong", "isrc": "ITG272100638", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_023", "title": "Arctic Gales", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901841", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_024", "title": "Neverending", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901842", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_025", "title": "In The Dark", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901843", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_026", "title": "Battles In The Night", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901844", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_027", "title": "Winterfall", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901845", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_028", "title": "Unspoken", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901846", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_029", "title": "Lost In Time", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901847", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_030", "title": "The Wolf And The Maiden", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901848", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_031", "title": "Forever", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901849", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_032", "title": "Enthroned", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901850", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_033", "title": "Crowned In Frost", "artist": "Frozen Crown", "album": "Crowned In Frost", "isrc": "ITD291901851", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_034", "title": "Nailed to the Wheel", "artist": "Edguy", "album": "Mandrake", "isrc": "DEZ900500475", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_035", "title": "While We Sleep", "artist": "Insomnium", "album": "Shadows of the Dying Sun", "isrc": "US4E41408302", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_036", "title": "The Fairies Dance", "artist": "Tungsten", "album": "We Will Rise", "isrc": "DED831900485", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_037", "title": "Still Loving You", "artist": "Sonata Arctica", "album": "Takatalvi", "isrc": "FIUM70600225", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_038", "title": "Bloody Angel", "artist": "Avatar", "album": "Hail the Apocalypse", "isrc": "SEVWR1400605", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_039", "title": "Blackbird", "artist": "Alter Bridge", "album": "Blackbird", "isrc": "USUM70749613", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_040", "title": "Love Bites (So Do I)", "artist": "Halestorm", "album": "Hello, It's Mz. Hyde", "isrc": "USAT21200099", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_041", "title": "Hurt", "artist": "One Desire", "album": "Hurt", "isrc": "ITG271700123", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_042", "title": "Hail to the Hordes", "artist": "Kreator", "album": "Gods of Violence", "isrc": "DED831601456", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_043", "title": "I'm Ready", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400016", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_044", "title": "Going Down", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400017", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_045", "title": "Boom Boom", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400018", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_046", "title": "Black Betty", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400019", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_047", "title": "The Thrill Is Gone", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400020", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_048", "title": "Born Under A Bad Sign", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400021", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_049", "title": "Crossroads", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400022", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_050", "title": "Sweet Home Chicago", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400023", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_051", "title": "Walking The Dog", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400024", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_052", "title": "Little Red Rooster", "artist": "The Dead Daisies", "album": "Lookin' For Trouble", "isrc": "AURJZ2400025", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_053", "title": "I Will Die In It", "artist": "Lord Of The Lost", "album": "I Will Die In It", "isrc": "ATN262528504", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_054", "title": "My Sanctuary", "artist": "Lord Of The Lost", "album": "I Will Die In It", "isrc": "ATN262528501", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_055", "title": "On a Quest for Aberdeen", "artist": "Gloryhammer", "album": "On a Quest for Aberdeen", "isrc": "ATN262539901", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_056", "title": "You Make Every Lie Come True", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500306", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_057", "title": "It Ain't Easy", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500307", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_058", "title": "Taste of Heaven", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500308", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_059", "title": "Never Ready to Go", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500309", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_060", "title": "The Forgiveness Tree", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500310", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_061", "title": "When The Moon Cries Wolf", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500311", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_062", "title": "Trader's South", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500312", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_063", "title": "Leave Him", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500313", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_064", "title": "Sit With My Soul", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500314", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}, {"id": "trk_temp0_065", "title": "I Wish You Peace", "artist": "The Speaker Wars", "album": "The Speaker Wars", "isrc": "ITG272500315", "sources": {"youtube": "", "spotify": "", "apple_music": ""}}]}]};
+    </script>
+
+    <!-- App Logic Script -->
+    <script>
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+
+        if (isMobile) {
+            document.getElementById('desktop-app').style.display = 'none';
+            document.getElementById('mobile-app').style.display = 'flex';
+        } else {
+            document.getElementById('desktop-app').style.display = 'flex';
+            document.getElementById('mobile-app').style.display = 'none';
+        }
+
+        let libraryData = embeddedLibraryData;
+        let currentPlaylist = null;
+        let currentTrackIndex = 0;
+        let activeProvider = 'youtube';
+        let playedHistory = JSON.parse(localStorage.getItem('balaji_music_history') || '[]');
+        let currentCoverUrl = null;
+        let currentPreviewAudioUrl = null;
+        const audioEl = document.getElementById('fallback-audio-player');
+
+        document.getElementById('stat-played-count').innerText = playedHistory.length;
+
+        // Ensure playlists are sorted alphabetically
+        if (libraryData && libraryData.playlists) {
+            libraryData.playlists.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        renderPlaylists();
+        if(libraryData.playlists && libraryData.playlists.length > 0) {
+            selectPlaylist(0);
+        }
+
+        function renderPlaylists() {
+            const container = document.getElementById('playlist-container');
+            container.innerHTML = '';
+            
+            const mobContainer = document.getElementById('mobile-playlist-container');
+            mobContainer.innerHTML = '';
+
+            libraryData.playlists.forEach((pl, idx) => {
+                const div = document.createElement('div');
+                div.className = `playlist-item ${idx === 0 ? 'active' : ''}`;
+                div.innerHTML = `<span>${pl.name}</span><span class="count">${pl.tracks.length}</span>`;
+                div.onclick = () => selectPlaylist(idx);
+                container.appendChild(div);
+
+                const mobCard = document.createElement('div');
+                mobCard.style.cssText = "background: var(--bg-secondary); border-radius: 10px; padding: 12px; border: 1px solid var(--border);";
+                mobCard.innerHTML = `<div style="font-weight: 600; color: var(--accent); margin-bottom: 8px; display: flex; justify-content: space-between;"><span>${pl.name}</span><span style="font-size:0.75rem; color:var(--text-muted);">${pl.tracks.length} tracks</span></div>`;
+                
+                const trackSubList = document.createElement('div');
+                trackSubList.style.cssText = "display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto;";
+                
+                pl.tracks.forEach((track, tIdx) => {
+                    const tItem = document.createElement('div');
+                    tItem.style.cssText = "font-size: 0.8rem; padding: 6px; border-radius: 4px; cursor: pointer; color: var(--text-main); background: var(--bg-primary);";
+                    tItem.innerText = `${tIdx + 1}. ${track.title} - ${track.artist}`;
+                    tItem.onclick = () => {
+                        currentPlaylist = pl;
+                        selectTrack(tIdx);
+                    };
+                    trackSubList.appendChild(tItem);
+                });
+
+                mobCard.appendChild(trackSubList);
+                mobContainer.appendChild(mobCard);
+            });
+        }
+
+        function selectPlaylist(index) {
+            document.querySelectorAll('.playlist-item').forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+            currentPlaylist = libraryData.playlists[index];
+            document.getElementById('current-playlist-title').innerText = `${currentPlaylist.name} (${currentPlaylist.tracks.length} tracks)`;
+            selectTrack(0);
+        }
+
+        function renderTracks() {
+            const tbody = document.getElementById('track-table-body');
+            tbody.innerHTML = '';
+            currentPlaylist.tracks.forEach((track, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = `track-row ${idx === currentTrackIndex ? 'playing' : ''}`;
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${track.title}</td>
+                    <td>${track.artist}</td>
+                    <td>${track.album || '-'}</td>
+                `;
+                tr.onclick = () => selectTrack(idx);
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function fetchTrackMetadata(track) {
+            currentCoverUrl = null;
+            currentPreviewAudioUrl = null;
+            document.getElementById('album-art-box').innerHTML = '💿';
+            document.getElementById('streamer-art-box').innerHTML = '🎸';
+            document.getElementById('mob-art-box').innerHTML = '🎸';
+            try {
+                const cleanArtist = (track.artist && track.artist !== 'nan') ? track.artist : '';
+                const q = encodeURIComponent(`${cleanArtist} ${track.title}`.trim());
+                const res = await fetch(`https://itunes.apple.com/search?term=${q}&entity=song&limit=1`);
+                const data = await res.json();
+                if (data.results && data.results.length > 0) {
+                    const item = data.results[0];
+                    if (item.artworkUrl100) {
+                        currentCoverUrl = item.artworkUrl100.replace('100x100bb', '300x300bb');
+                        document.getElementById('album-art-box').innerHTML = `<img src="${currentCoverUrl}" alt="Art" />`;
+                        document.getElementById('streamer-art-box').innerHTML = `<img src="${currentCoverUrl}" alt="Art" />`;
+                        document.getElementById('mob-art-box').innerHTML = `<img src="${currentCoverUrl}" alt="Art" />`;
+                    }
+                    if (item.previewUrl) {
+                        currentPreviewAudioUrl = item.previewUrl;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function selectTrack(index) {
+            currentTrackIndex = index;
+            const track = currentPlaylist.tracks[index];
+            
+            audioEl.pause();
+            audioEl.currentTime = 0;
+
+            document.getElementById('current-album-title').innerText = track.album || 'Single / Unknown Album';
+            document.getElementById('current-artist-name').innerText = track.artist;
+            document.getElementById('now-playing-title').innerText = track.title;
+            document.getElementById('now-playing-subtitle').innerText = `${track.artist} — ${track.album || 'Album Art'}`;
+
+            document.getElementById('mob-track-title').innerText = track.title;
+            document.getElementById('mob-artist-album').innerText = `${track.artist} • ${currentPlaylist.name}`;
+
+            renderTracks();
+            fetchTrackMetadata(track);
+
+            document.getElementById('play-pause-btn').innerHTML = '&#9658;';
+            document.getElementById('mob-play-pause-btn').innerHTML = '&#9658;';
+            document.getElementById('stat-status').innerText = 'Stopped (Ready)';
+        }
+
+        function startPlayback() {
+            if (!currentPlaylist) return;
+            const track = currentPlaylist.tracks[currentTrackIndex];
+            
+            if(!playedHistory.includes(track.id)) {
+                playedHistory.push(track.id);
+                localStorage.setItem('balaji_music_history', JSON.stringify(playedHistory));
+            }
+            document.getElementById('stat-played-count').innerText = playedHistory.length;
+            document.getElementById('stat-status').innerText = 'Playing Stream';
+
+            document.getElementById('play-pause-btn').innerHTML = '❚❚';
+            document.getElementById('mob-play-pause-btn').innerHTML = '❚❚';
+
+            if (currentPreviewAudioUrl) {
+                audioEl.src = currentPreviewAudioUrl;
+                audioEl.play().catch(() => {});
+            } else {
+                const q = encodeURIComponent(`${track.artist !== 'nan' ? track.artist : ''} ${track.title}`.trim());
+                const urls = {
+                    youtube: `https://music.youtube.com/search?q=${q}`,
+                    spotify: `https://open.spotify.com/search/${q}`,
+                    amazon: `https://music.amazon.in/search/${q}`,
+                    deezer: `https://www.deezer.com/search/${q}`,
+                    qobuz: `https://play.qobuz.com/search?q=${q}`,
+                    tidal: `https://listen.tidal.com/search?q=${q}`,
+                    apple: `https://music.apple.com/in/search?term=${q}`
+                };
+                window.open(urls[activeProvider] || urls.youtube, '_blank');
+            }
+        }
+
+        audioEl.onended = () => {
+            let nextIdx = (currentTrackIndex + 1) % currentPlaylist.tracks.length;
+            selectTrack(nextIdx);
+            startPlayback();
+        };
+
+        const syncProviders = (val) => {
+            activeProvider = val;
+            document.getElementById('provider-dropdown').value = val;
+            document.getElementById('mob-provider-dropdown').value = val;
+        };
+
+        document.getElementById('provider-dropdown').onchange = (e) => syncProviders(e.target.value);
+        document.getElementById('mob-provider-dropdown').onchange = (e) => syncProviders(e.target.value);
+
+        const handleNext = () => { 
+            if(currentPlaylist) { 
+                selectTrack((currentTrackIndex + 1) % currentPlaylist.tracks.length); 
+                startPlayback();
+            } 
+        };
+        const handlePrev = () => {
+            if(currentPlaylist) {
+                selectTrack((currentTrackIndex - 1 + currentPlaylist.tracks.length) % currentPlaylist.tracks.length);
+                startPlayback();
+            }
+        };
+
+        document.getElementById('next-btn').onclick = handleNext;
+        document.getElementById('prev-btn').onclick = handlePrev;
+        document.getElementById('mob-next-btn').onclick = handleNext;
+        document.getElementById('mob-prev-btn').onclick = handlePrev;
+
+        const handleStop = () => {
+            audioEl.pause();
+            audioEl.currentTime = 0;
+            if(currentPlaylist) {
+                selectTrack(currentTrackIndex);
+            }
+        };
+
+        document.getElementById('stop-btn').onclick = handleStop;
+        document.getElementById('mob-stop-btn').onclick = handleStop;
+
+        const handlePlayPause = () => {
+            if (!currentPlaylist) return;
+            if (!audioEl.paused) {
+                audioEl.pause();
+                document.getElementById('play-pause-btn').innerHTML = '&#9658;';
+                document.getElementById('mob-play-pause-btn').innerHTML = '&#9658;';
+                document.getElementById('stat-status').innerText = 'Paused';
+            } else if (audioEl.src && audioEl.currentTime > 0) {
+                audioEl.play();
+                document.getElementById('play-pause-btn').innerHTML = '❚❚';
+                document.getElementById('mob-play-pause-btn').innerHTML = '❚❚';
+                document.getElementById('stat-status').innerText = 'Playing Stream';
+            } else {
+                startPlayback();
+            }
+        };
+
+        document.getElementById('play-pause-btn').onclick = handlePlayPause;
+        document.getElementById('mob-play-pause-btn').onclick = handlePlayPause;
+    </script>
+</body>
+</html>
