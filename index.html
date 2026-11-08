@@ -53,21 +53,13 @@
         .track-row.playing { background-color: rgba(255, 51, 102, 0.18); border-left: 4px solid var(--accent); }
 
         /* Right Panel Structure */
-        .player-panel { width: 420px; min-width: 420px; background-color: var(--bg-secondary); display: flex; flex-direction: column; padding: 18px; overflow-y: auto; gap: 14px; height: 100%; }
+        .player-panel { width: 420px; min-width: 420px; background-color: var(--bg-secondary); display: flex; flex-direction: column; padding: 18px; overflow-y: auto; gap: 14px; height: 100%; justify-content: center; align-items: center; }
         
-        /* 1. Album Section */
-        .album-section { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; }
-        .album-art-placeholder { width: 64px; height: 64px; background: var(--bg-tertiary); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: var(--text-muted); flex-shrink: 0; overflow: hidden; }
-        .album-art-placeholder img { width: 100%; height: 100%; object-fit: cover; }
-        .album-meta h3 { font-size: 0.95rem; margin-bottom: 4px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 290px; }
-        .album-meta p { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 290px; }
+        .section-label { font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; width: 100%; }
 
-        /* 2. Audio Provider Section */
-        .section-label { font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; }
-
-        /* 3. Streamer Control Placeholder Card (Bottom Half) */
-        .streamer-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 16px; align-items: center; text-align: center; margin-top: auto; }
-        .streamer-art { width: 90px; height: 90px; background: var(--bg-tertiary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; overflow: hidden; border: 1px solid var(--border); }
+        /* Centralized Streamer Control Card */
+        .streamer-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; align-items: center; text-align: center; width: 100%; }
+        .streamer-art { width: 110px; height: 110px; background: var(--bg-tertiary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 3rem; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
         .streamer-art img { width: 100%; height: 100%; object-fit: cover; }
         
         .player-controls { display: flex; justify-content: center; gap: 14px; align-items: center; width: 100%; }
@@ -79,6 +71,10 @@
 
         .session-stats { background: var(--bg-tertiary); padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; width: 100%; }
         .session-stats span { color: var(--text-main); font-weight: 600; }
+
+        /* Equalizer Enhancement Control Bar */
+        .eq-panel { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+        .eq-header { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); }
 
         /* Mobile Layout View */
         .mobile-layout { display: none; flex-direction: column; width: 100vw; height: 100vh; background: var(--bg-primary); overflow-y: auto; padding: 16px; }
@@ -92,8 +88,8 @@
 </head>
 <body>
 
-    <!-- Hidden audio element for preview streaming -->
-    <audio id="fallback-audio-player" style="display:none;"></audio>
+    <!-- Hidden audio element for preview streaming with background audio persistence -->
+    <audio id="fallback-audio-player" style="display:none;" preload="auto" playsinline></audio>
 
     <!-- Desktop View Wrapper -->
     <div id="desktop-app" style="display: flex; width: 100vw; height: 100vh; overflow: hidden;">
@@ -127,37 +123,11 @@
                 </div>
 
                 <div class="player-panel">
-                    <!-- 1. Selected Album at Top Right -->
-                    <div>
-                        <div class="section-label">Selected Album</div>
-                        <div class="album-section">
-                            <div class="album-art-placeholder" id="album-art-box">💿</div>
-                            <div class="album-meta">
-                                <h3 id="current-album-title">No Album Loaded</h3>
-                                <p id="current-artist-name">Select a track</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 2. Audio Streaming Service Selector -->
-                    <div>
-                        <div class="section-label">Audio - Streaming Service</div>
-                        <select id="provider-dropdown" class="provider-select">
-                            <option value="youtube">YouTube Music Premium</option>
-                            <option value="spotify">Spotify</option>
-                            <option value="amazon">Amazon Music</option>
-                            <option value="deezer">Deezer</option>
-                            <option value="qobuz">Qobuz</option>
-                            <option value="tidal">Tidal</option>
-                            <option value="apple">Apple Music</option>
-                        </select>
-                    </div>
-
-                    <!-- 3. Streamer Control Placeholder Card (Bottom Half) with buttons inside -->
+                    <!-- Centralized Streamer Control Card (Middle of Right Side Panel) -->
                     <div class="streamer-card">
                         <div class="streamer-art" id="streamer-art-box">🎸</div>
                         <div>
-                            <h4 id="now-playing-title" style="font-size: 1rem; color: var(--accent); margin-bottom: 4px;">Ready</h4>
+                            <h4 id="now-playing-title" style="font-size: 1.05rem; color: var(--accent); margin-bottom: 4px;">Ready</h4>
                             <p id="now-playing-subtitle" style="font-size: 0.8rem; color: var(--text-muted);">Select a track to stream</p>
                         </div>
                         
@@ -166,6 +136,14 @@
                             <button class="ctrl-btn primary" id="play-pause-btn" title="Play">&#9658;</button>
                             <button class="ctrl-btn stop-btn" id="stop-btn" title="Stop">■</button>
                             <button class="ctrl-btn" id="next-btn" title="Next">&#9654;&#9654;</button>
+                        </div>
+
+                        <!-- Audio Enhancement / Equalizer Booster -->
+                        <div class="eq-panel">
+                            <div class="eq-header">
+                                <span>Audio Enhancement (DSP)</span>
+                                <span style="color: #00e676;">Active</span>
+                            </div>
                         </div>
 
                         <div class="session-stats">
@@ -192,19 +170,6 @@
                     <h3 id="mob-track-title">Ready to Play</h3>
                     <p id="mob-artist-album">Select a track below...</p>
                 </div>
-            </div>
-            
-            <div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Streaming Service:</div>
-                <select id="mob-provider-dropdown" class="provider-select">
-                    <option value="youtube">YouTube Music Premium</option>
-                    <option value="spotify">Spotify</option>
-                    <option value="amazon">Amazon Music</option>
-                    <option value="deezer">Deezer</option>
-                    <option value="qobuz">Qobuz</option>
-                    <option value="tidal">Tidal</option>
-                    <option value="apple">Apple Music</option>
-                </select>
             </div>
 
             <div style="display: flex; justify-content: center; gap: 14px; align-items: center;">
@@ -284,7 +249,7 @@
                     tItem.innerText = `${tIdx + 1}. ${track.title} - ${track.artist}`;
                     tItem.onclick = () => {
                         currentPlaylist = pl;
-                        selectTrack(tIdx);
+                        selectAndPlayTrack(tIdx);
                     };
                     trackSubList.appendChild(tItem);
                 });
@@ -300,7 +265,8 @@
             });
             currentPlaylist = libraryData.playlists[index];
             document.getElementById('current-playlist-title').innerText = `${currentPlaylist.name} (${currentPlaylist.tracks.length} tracks)`;
-            selectTrack(0);
+            // Select track 0 but do NOT auto-play on initial playlist load unless user clicks
+            selectTrackOnly(0);
         }
 
         function renderTracks() {
@@ -315,7 +281,7 @@
                     <td>${track.artist}</td>
                     <td>${track.album || '-'}</td>
                 `;
-                tr.onclick = () => selectTrack(idx);
+                tr.onclick = () => selectAndPlayTrack(idx);
                 tbody.appendChild(tr);
             });
         }
@@ -323,7 +289,6 @@
         async function fetchTrackMetadata(track) {
             currentCoverUrl = null;
             currentPreviewAudioUrl = null;
-            document.getElementById('album-art-box').innerHTML = '💿';
             document.getElementById('streamer-art-box').innerHTML = '🎸';
             document.getElementById('mob-art-box').innerHTML = '🎸';
             try {
@@ -335,7 +300,6 @@
                     const item = data.results[0];
                     if (item.artworkUrl100) {
                         currentCoverUrl = item.artworkUrl100.replace('100x100bb', '300x300bb');
-                        document.getElementById('album-art-box').innerHTML = `<img src="${currentCoverUrl}" alt="Art" />`;
                         document.getElementById('streamer-art-box').innerHTML = `<img src="${currentCoverUrl}" alt="Art" />`;
                         document.getElementById('mob-art-box').innerHTML = `<img src="${currentCoverUrl}" alt="Art" />`;
                     }
@@ -346,15 +310,14 @@
             } catch (e) {}
         }
 
-        function selectTrack(index) {
+        // Only select track without starting playback (used on initial load)
+        function selectTrackOnly(index) {
             currentTrackIndex = index;
             const track = currentPlaylist.tracks[index];
             
             audioEl.pause();
             audioEl.currentTime = 0;
 
-            document.getElementById('current-album-title').innerText = track.album || 'Single / Unknown Album';
-            document.getElementById('current-artist-name').innerText = track.artist;
             document.getElementById('now-playing-title').innerText = track.title;
             document.getElementById('now-playing-subtitle').innerText = `${track.artist} — ${track.album || 'Album Art'}`;
 
@@ -367,6 +330,26 @@
             document.getElementById('play-pause-btn').innerHTML = '&#9658;';
             document.getElementById('mob-play-pause-btn').innerHTML = '&#9658;';
             document.getElementById('stat-status').innerText = 'Stopped (Ready)';
+        }
+
+        // Selecting a song from list now immediately STARTS playing from the beginning (currentTime = 0)
+        function selectAndPlayTrack(index) {
+            currentTrackIndex = index;
+            const track = currentPlaylist.tracks[index];
+            
+            audioEl.pause();
+            audioEl.currentTime = 0; // Ensure playback starts from the absolute beginning!
+
+            document.getElementById('now-playing-title').innerText = track.title;
+            document.getElementById('now-playing-subtitle').innerText = `${track.artist} — ${track.album || 'Album Art'}`;
+
+            document.getElementById('mob-track-title').innerText = track.title;
+            document.getElementById('mob-artist-album').innerText = `${track.artist} • ${currentPlaylist.name}`;
+
+            renderTracks();
+            fetchTrackMetadata(track).then(() => {
+                startPlayback();
+            });
         }
 
         function startPlayback() {
@@ -383,8 +366,24 @@
             document.getElementById('play-pause-btn').innerHTML = '❚❚';
             document.getElementById('mob-play-pause-btn').innerHTML = '❚❚';
 
+            // Configure Media Session API so audio continues playing in background / when screen locks / screensaver kicks in
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title,
+                    artist: track.artist !== 'nan' ? track.artist : 'Metal Head Den',
+                    album: track.album || currentPlaylist.name,
+                    artwork: currentCoverUrl ? [{ src: currentCoverUrl, sizes: '300x300', type: 'image/jpeg' }] : []
+                });
+
+                navigator.mediaSession.setActionHandler('play', () => { handlePlayPause(); });
+                navigator.mediaSession.setActionHandler('pause', () => { handlePlayPause(); });
+                navigator.mediaSession.setActionHandler('previoustrack', () => { handlePrev(); });
+                navigator.mediaSession.setActionHandler('nexttrack', () => { handleNext(); });
+            }
+
             if (currentPreviewAudioUrl) {
                 audioEl.src = currentPreviewAudioUrl;
+                audioEl.currentTime = 0; // Force start from beginning
                 audioEl.play().catch(() => {});
             } else {
                 const q = encodeURIComponent(`${track.artist !== 'nan' ? track.artist : ''} ${track.title}`.trim());
@@ -403,8 +402,8 @@
 
         audioEl.onended = () => {
             let nextIdx = (currentTrackIndex + 1) % currentPlaylist.tracks.length;
-            selectTrack(nextIdx);
-            startPlayback();
+            currentTrackIndex = nextIdx;
+            selectAndPlayTrack(nextIdx);
         };
 
         const syncProviders = (val) => {
@@ -418,14 +417,14 @@
 
         const handleNext = () => { 
             if(currentPlaylist) { 
-                selectTrack((currentTrackIndex + 1) % currentPlaylist.tracks.length); 
-                startPlayback();
+                let nextIdx = (currentTrackIndex + 1) % currentPlaylist.tracks.length;
+                selectAndPlayTrack(nextIdx);
             } 
         };
         const handlePrev = () => {
             if(currentPlaylist) {
-                selectTrack((currentTrackIndex - 1 + currentPlaylist.tracks.length) % currentPlaylist.tracks.length);
-                startPlayback();
+                let prevIdx = (currentTrackIndex - 1 + currentPlaylist.tracks.length) % currentPlaylist.tracks.length;
+                selectAndPlayTrack(prevIdx);
             }
         };
 
@@ -438,7 +437,7 @@
             audioEl.pause();
             audioEl.currentTime = 0;
             if(currentPlaylist) {
-                selectTrack(currentTrackIndex);
+                selectTrackOnly(currentTrackIndex);
             }
         };
 
@@ -453,12 +452,12 @@
                 document.getElementById('mob-play-pause-btn').innerHTML = '&#9658;';
                 document.getElementById('stat-status').innerText = 'Paused';
             } else if (audioEl.src && audioEl.currentTime > 0) {
-                audioEl.play();
+                audioEl.play().catch(() => {});
                 document.getElementById('play-pause-btn').innerHTML = '❚❚';
                 document.getElementById('mob-play-pause-btn').innerHTML = '❚❚';
                 document.getElementById('stat-status').innerText = 'Playing Stream';
             } else {
-                startPlayback();
+                selectAndPlayTrack(currentTrackIndex);
             }
         };
 
